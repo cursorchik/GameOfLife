@@ -7,6 +7,6 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="540" Width="910">
     <Grid>
-        
-    </Grid>
+		<Canvas x:Name="CanvasArea" Background="Black" Focusable="True"></Canvas>
+	</Grid>
 </Window>

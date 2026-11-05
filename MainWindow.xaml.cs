@@ -15,9 +15,11 @@ using System.Windows.Shapes;
 
 namespace GameOfLife
 {
-	/// <summary>
-	/// Interaction logic for MainWindow.xaml
-	/// </summary>
+	public static class GameSettings
+	{
+		public const int CELL_SIZE = 20;
+	}
+
 	public partial class MainWindow : Window
 	{
 		public MainWindow()

@@ -5,8 +5,34 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GameOfLife"
         mc:Ignorable="d"
-        Title="MainWindow" Height="540" Width="910">
-    <Grid>
-		<Canvas x:Name="CanvasArea" Background="Black" Focusable="True"></Canvas>
+        Title="GameOfLife" Height="800" Width="1600"
+		MouseDown="MouseDownHandler"
+>
+	<Grid>
+		<Canvas x:Name="CanvasArea" Focusable="True">
+			<Canvas.Background>
+				<VisualBrush x:Name="GridBrush" TileMode="Tile" Viewport="0,0,40,40" ViewportUnits="Absolute">
+					<VisualBrush.Visual>
+						<Grid x:Name="GridCell">
+							<Rectangle x:Name="GridRect" Stroke="LightGray" StrokeThickness="0.5"/>
+						</Grid>
+					</VisualBrush.Visual>
+				</VisualBrush>
+			</Canvas.Background>
+		</Canvas>
+		<Button
+			x:Name="ButtonStart"
+			Content="Start"
+			Background="Black"
+			Foreground="White"
+			Width="128"
+			Height="40"
+			FontWeight="Bold"
+			HorizontalAlignment="Left"
+			VerticalAlignment="Top"
+			Margin="10"
+			Visibility="Visible"
+			Click="ButtonStartHandler"
+		/>
 	</Grid>
 </Window>

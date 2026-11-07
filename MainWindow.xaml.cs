@@ -21,13 +21,16 @@ namespace GameOfLife
 {
 	public static class GameSettings
 	{
-		public const int CELL_SIZE = 10;
-		public const int FIELD_ROWS = 100;
-		public const int FIELD_COLS = 100;
+		public const int CELL_SIZE = 20;
 		public const int CURRENT_TIMER_INTERVAL = 100;
+
+		public static int FieldRows;
+		public static int FieldCols;
 
 		public static readonly SolidColorBrush lifeColor = Brushes.Black;
 		public static readonly SolidColorBrush deadColor = Brushes.White;
+
+		public static GameRule CurrentRule = GameRule.Parse("B345/S4567");
 	}
 
 	public static class Patterns
@@ -71,10 +74,9 @@ namespace GameOfLife
 
 		private DispatcherTimer timer;
 
-		bool[,] field = new bool[GameSettings.FIELD_ROWS, GameSettings.FIELD_COLS];
-		bool[,] nextField = new bool[GameSettings.FIELD_ROWS, GameSettings.FIELD_COLS];
-
-		Rectangle[,] cells = new Rectangle[GameSettings.FIELD_ROWS, GameSettings.FIELD_COLS];
+		bool[] field;
+		bool[] nextField;
+		Rectangle[,] cells;
 
 		private int lastMouseRow = -1;
 		private int lastMouseCol = -1;
@@ -102,22 +104,44 @@ namespace GameOfLife
 
 		private void Init(object sender, RoutedEventArgs e)
 		{
-			// 1. Устанавливаем область повторения плитки (X, Y, Width, Height)
-			GridBrush.Viewport = new Rect(0, 0, GameSettings.CELL_SIZE, GameSettings.CELL_SIZE);
+			// 1. Размеры поля под доступную область экрана
+			ComputeFieldSize();
 
-			// 2. Явно задаем размеры для контейнера внутри плитки
+			int size = GameSettings.FieldRows * GameSettings.FieldCols;
+			field = new bool[size];
+			nextField = new bool[size];
+
+			cells = new Rectangle[GameSettings.FieldRows, GameSettings.FieldCols];
+
+			// 2. Дальше — как раньше: плитка, прямоугольники, отрисовка
+			GridBrush.Viewport = new Rect(0, 0, GameSettings.CELL_SIZE, GameSettings.CELL_SIZE);
 			GridCell.Width = GameSettings.CELL_SIZE;
 			GridCell.Height = GameSettings.CELL_SIZE;
-
-			// Если внутри лежит Rectangle, можно задать размеры и ему
 			GridRect.Width = GameSettings.CELL_SIZE;
 			GridRect.Height = GameSettings.CELL_SIZE;
 
-			// 3. Создаём прямоугольники для всех клеток один раз
 			CreateCells();
-
-			// 4. Рисуем начальное (пустое) состояние
 			Redraw();
+		}
+
+		private void ComputeFieldSize()
+		{
+			// Рабочая область экрана (без панели задач), в DIP
+			Rect workArea = SystemParameters.WorkArea;
+
+			// Оставляем запас под кнопку/слайдер сверху и возможные отступы
+			const double topReserve = 40;   // под UI-панели
+			const double margin = 20;
+
+			double availableWidth = workArea.Width - margin;
+			double availableHeight = workArea.Height - topReserve;
+
+			GameSettings.FieldCols = (int)(availableWidth / GameSettings.CELL_SIZE);
+			GameSettings.FieldRows = (int)(availableHeight / GameSettings.CELL_SIZE);
+
+			// На всякий случай — минимум 10×10
+			if (GameSettings.FieldCols < 10) GameSettings.FieldCols = 10;
+			if (GameSettings.FieldRows < 10) GameSettings.FieldRows = 10;
 		}
 
 		private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -153,8 +177,8 @@ namespace GameOfLife
 
 		private void InsertAtMouseOrCenter(string[] pattern)
 		{
-			int row = lastMouseRow >= 0 ? lastMouseRow : GameSettings.FIELD_ROWS / 2;
-			int col = lastMouseCol >= 0 ? lastMouseCol : GameSettings.FIELD_COLS / 2;
+			int row = lastMouseRow >= 0 ? lastMouseRow : GameSettings.FieldRows / 2;
+			int col = lastMouseCol >= 0 ? lastMouseCol : GameSettings.FieldCols / 2;
 
 			InsertPattern(pattern, row, col);
 		}
@@ -177,9 +201,9 @@ namespace GameOfLife
 
 		private void CreateCells()
 		{
-			for (int row = 0; row < GameSettings.FIELD_ROWS; row++)
+			for (int row = 0; row < GameSettings.FieldRows; row++)
 			{
-				for (int col = 0; col < GameSettings.FIELD_COLS; col++)
+				for (int col = 0; col < GameSettings.FieldCols; col++)
 				{
 					double x = col * GameSettings.CELL_SIZE;
 					double y = row * GameSettings.CELL_SIZE;
@@ -203,9 +227,9 @@ namespace GameOfLife
 		private void Redraw()
 		{
 
-			for (int row = 0; row < GameSettings.FIELD_ROWS; row++)
+			for (int row = 0; row < GameSettings.FieldRows; row++)
 			{
-				for (int col = 0; col < GameSettings.FIELD_COLS; col++)
+				for (int col = 0; col < GameSettings.FieldCols; col++)
 				{
 					DrawCell(row, col);
 				}
@@ -214,34 +238,34 @@ namespace GameOfLife
 
 		private void DrawCell(int row, int col)
 		{
-			cells[row, col].Fill = field[row, col] ? GameSettings.lifeColor : GameSettings.deadColor;
+			cells[row, col].Fill = field[Idx(row, col)] ? GameSettings.lifeColor : GameSettings.deadColor;
 		}
 
 		private void TimerTick(object sender, EventArgs e)
 		{
-			for (int row = 0; row < GameSettings.FIELD_ROWS; row++)
+			for (int row = 0; row < GameSettings.FieldRows; row++)
 			{
-				for (int col = 0; col < GameSettings.FIELD_COLS; col++)
+				for (int col = 0; col < GameSettings.FieldCols; col++)
 				{
+					int i = Idx(row, col);
 					int neighbors = CountAliveNeighbors(row, col);
-					bool isCurrentCellAlive = field[row, col];
+					bool isCurrentCellAlive = field[i];
 
-					bool nextAlive = isCurrentCellAlive
-						? (neighbors == 2 || neighbors == 3)
-						: (neighbors == 3);
+					var rule = GameSettings.CurrentRule;
+					bool nextAlive = isCurrentCellAlive ? rule.Survive[neighbors] : rule.Birth[neighbors];
 
-					nextField[row, col] = nextAlive;
+					nextField[i] = nextAlive;
 				}
 			}
 
-			// Копируем и перекрашиваем только изменившиеся
-			for (int row = 0; row < GameSettings.FIELD_ROWS; row++)
+			for (int row = 0; row < GameSettings.FieldRows; row++)
 			{
-				for (int col = 0; col < GameSettings.FIELD_COLS; col++)
+				for (int col = 0; col < GameSettings.FieldCols; col++)
 				{
-					if (nextField[row, col] != field[row, col])
+					int i = Idx(row, col);
+					if (nextField[i] != field[i])
 					{
-						field[row, col] = nextField[row, col];
+						field[i] = nextField[i];
 						DrawCell(row, col);
 					}
 				}
@@ -268,22 +292,22 @@ namespace GameOfLife
 		private int CountAliveNeighbors(int row, int col)
 		{
 			int r0 = Math.Max(0, row - 1);
-			int r1 = Math.Min(GameSettings.FIELD_ROWS - 1, row + 1);
+			int r1 = Math.Min(GameSettings.FieldRows - 1, row + 1);
 			int c0 = Math.Max(0, col - 1);
-			int c1 = Math.Min(GameSettings.FIELD_COLS - 1, col + 1);
+			int c1 = Math.Min(GameSettings.FieldCols - 1, col + 1);
 
 			int neighbors = 0;
 			for (int r = r0; r <= r1; r++)
 			{
+				int rowOffset = r * GameSettings.FieldCols;
 				for (int c = c0; c <= c1; c++)
 				{
 					if (r == row && c == col) continue;
-					if (field[r, c]) neighbors++;
+					if (field[rowOffset + c]) neighbors++;
 				}
 			}
 			return neighbors;
 		}
-
 
 		private void InsertPattern(string[] pattern, int startRow, int startCol)
 		{
@@ -298,15 +322,14 @@ namespace GameOfLife
 					int r = startRow + dr;
 					int c = startCol + dc;
 
-					if (r < 0 || r >= GameSettings.FIELD_ROWS) continue;
-					if (c < 0 || c >= GameSettings.FIELD_COLS) continue;
+					if (r < 0 || r >= GameSettings.FieldRows) continue;
+					if (c < 0 || c >= GameSettings.FieldCols) continue;
 
-					field[r, c] = true;
+					field[Idx(r, c)] = true;
 					DrawCell(r, c);
 				}
 			}
 		}
-
 
 		private void MouseDownHandler(object sender, MouseButtonEventArgs e)
 		{
@@ -317,15 +340,15 @@ namespace GameOfLife
 			int col = GetCell(position.X);
 			int row = GetCell(position.Y);
 
-			if (row < 0 || row >= GameSettings.FIELD_ROWS) return;
-			if (col < 0 || col >= GameSettings.FIELD_COLS) return;
+			if (row < 0 || row >= GameSettings.FieldRows) return;
+			if (col < 0 || col >= GameSettings.FieldCols) return;
 
 			// Ctrl зажат → стираем, иначе → рисуем
 			drawValue = (Keyboard.Modifiers & ModifierKeys.Control) == 0;
 
 			isDrawing = true;
 
-			field[row, col] = drawValue;
+			field[Idx(row, col)] = drawValue;
 			DrawCell(row, col);
 		}
 
@@ -348,12 +371,13 @@ namespace GameOfLife
 			int col = GetCell(position.X);
 			int row = GetCell(position.Y);
 
-			if (row < 0 || row >= GameSettings.FIELD_ROWS) return;
-			if (col < 0 || col >= GameSettings.FIELD_COLS) return;
+			if (row < 0 || row >= GameSettings.FieldRows) return;
+			if (col < 0 || col >= GameSettings.FieldCols) return;
 
-			if (field[row, col] != drawValue)
+			int i = Idx(row, col);
+			if (field[i] != drawValue)
 			{
-				field[row, col] = drawValue;
+				field[i] = drawValue;
 				DrawCell(row, col);
 			}
 		}
@@ -380,6 +404,58 @@ namespace GameOfLife
 			if (!isDrawing) return;
 
 			isDrawing = false;
+		}
+
+		private static int Idx(int row, int col)
+		{
+			return row * GameSettings.FieldCols + col;
+		}
+	}
+
+	public sealed class GameRule
+	{
+		public bool[] Birth = new bool[9];    // Birth[n] = true, если рождается при n соседях
+		public bool[] Survive = new bool[9];  // Survive[n] = true, если выживает при n соседях
+
+		public static GameRule Parse(string rule)
+		{
+			if (string.IsNullOrWhiteSpace(rule))
+				throw new FormatException("Правило пустое");
+
+			rule = rule.Replace(" ", "").ToUpperInvariant();
+
+			string[] parts = rule.Split('/');
+			if (parts.Length != 2)
+				throw new FormatException("Ожидается формат B.../S..., например B3/S23");
+
+			string birthPart = parts[0];
+			string survivePart = parts[1];
+
+			if (!birthPart.StartsWith("B"))
+				throw new FormatException("Левая часть должна начинаться с B");
+			if (!survivePart.StartsWith("S"))
+				throw new FormatException("Правая часть должна начинаться с S");
+
+			birthPart = birthPart.Substring(1);
+			survivePart = survivePart.Substring(1);
+
+			var result = new GameRule();
+
+			foreach (char c in birthPart)
+			{
+				if (c < '0' || c > '8')
+					throw new FormatException($"Недопустимая цифра в B-части: {c}");
+				result.Birth[c - '0'] = true;
+			}
+
+			foreach (char c in survivePart)
+			{
+				if (c < '0' || c > '8')
+					throw new FormatException($"Недопустимая цифра в S-части: {c}");
+				result.Survive[c - '0'] = true;
+			}
+
+			return result;
 		}
 	}
 }

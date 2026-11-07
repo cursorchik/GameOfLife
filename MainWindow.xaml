@@ -5,7 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GameOfLife"
         mc:Ignorable="d"
-        Title="GameOfLife" Height="800" Width="1600">
+        Title="GameOfLife"
+		WindowState="Maximized"
+        ResizeMode="NoResize"
+	>
 	<Grid>
 		<Canvas x:Name="CanvasArea" Focusable="True"
                 MouseDown="MouseDownHandler"

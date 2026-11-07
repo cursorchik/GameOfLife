@@ -5,11 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GameOfLife"
         mc:Ignorable="d"
-        Title="GameOfLife" Height="800" Width="1600"
-		MouseDown="MouseDownHandler"
->
+        Title="GameOfLife" Height="800" Width="1600">
 	<Grid>
-		<Canvas x:Name="CanvasArea" Focusable="True">
+		<Canvas x:Name="CanvasArea" Focusable="True"
+                MouseDown="MouseDownHandler"
+                MouseMove="MouseMoveHandler"
+                MouseUp="MouseUpHandler">
 			<Canvas.Background>
 				<VisualBrush x:Name="GridBrush" TileMode="Tile" Viewport="0,0,40,40" ViewportUnits="Absolute">
 					<VisualBrush.Visual>
@@ -20,19 +21,50 @@
 				</VisualBrush>
 			</Canvas.Background>
 		</Canvas>
-		<Button
-			x:Name="ButtonStart"
-			Content="Start"
-			Background="Black"
-			Foreground="White"
-			Width="128"
-			Height="40"
-			FontWeight="Bold"
-			HorizontalAlignment="Left"
-			VerticalAlignment="Top"
-			Margin="10"
-			Visibility="Visible"
-			Click="ButtonStartHandler"
-		/>
+
+		<TextBlock x:Name="PauseLabel"
+                   Text="ПАУЗА"
+                   FontSize="48"
+                   FontWeight="Bold"
+                   Foreground="Black"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Top"
+                   IsHitTestVisible="False"
+                   Visibility="Visible" />
+
+		<StackPanel Orientation="Vertical">
+			<Button x:Name="ButtonRestart"
+                    Content="Rstart"
+                    Background="Black"
+                    Foreground="White"
+                    Width="128"
+                    Height="40"
+                    FontWeight="Bold"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="10"
+                    Visibility="Visible"
+                    Click="ButtonRestartHandler" />
+		</StackPanel>
+
+		<Border Background="#80000000"
+                CornerRadius="8"
+                Padding="10,6"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="10">
+			<StackPanel Orientation="Horizontal">
+				<TextBlock Text="Скорость:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="White" FontWeight="Bold"/>
+				<TextBlock x:Name="SpeedLabel" Text="500 мс" VerticalAlignment="Center" Width="70" Foreground="White"/>
+				<Slider x:Name="SpeedSlider" Width="200"
+                        Minimum="50"
+						Maximum="2000"
+                        VerticalAlignment="Center"
+                        TickFrequency="50"
+						TickPlacement="BottomRight"
+						IsSnapToTickEnabled="True"
+                        ValueChanged="SpeedSlider_ValueChanged"/>   
+			</StackPanel>
+		</Border>
 	</Grid>
 </Window>
